@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const currentBalanceHTML = res.showCurrentBalance ? `
         <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #c4b5fd;">
-          <span>Current Credit:</span>
+          <span>Current Credits:</span>
           <span style="font-weight: bold;">${UICommon.formatValue(currentCount, numericDisplayEnabled, conversionRate, decimalPlaces)}</span>
         </div>` : '';
 
@@ -627,7 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <span class="status-value">${firstCountToday}</span>
     </div>
     <div class="status-row">
-      <span class="status-label">Current Credit:</span>
+      <span class="status-label">Current Credits:</span>
       <span class="status-value">${currentCount}</span>
     </div>
     <div class="status-row" style="color:#d93025;">

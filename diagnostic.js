@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       createStatItem('Stage:', `Stage ${lastSuccess.stage}`, 'success');
       createStatItem('Time:', timeStr);
-      createStatItem('Credit Value:', lastSuccess.value);
+      createStatItem('Credits Value:', lastSuccess.value);
 
       lastSuccessDiv.appendChild(statGrid);
 
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
       successHistoryDiv.appendChild(span);
     } else {
       let histText = '';
-      histText += 'Time           | Stage | Credit\n';
+      histText += 'Time           | Stage | Credits\n';
       histText += '───────────────┼───────┼────────\n';
       successes.slice(-10).reverse().forEach((log) => {
         const time = log.time.split('T')[1]?.split('.')[0] || log.time;

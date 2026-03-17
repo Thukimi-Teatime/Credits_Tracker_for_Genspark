@@ -85,7 +85,7 @@
             balanceCard.id = 'balance-display-sidebar';
             balanceCard.style.cssText = cardStyle;
             balanceCard.innerHTML = `
-                <div style="font-size: 11px; margin-bottom: 4px; opacity: 0.8;">[Log] Current Credit</div>
+                <div style="font-size: 11px; margin-bottom: 4px; opacity: 0.8;">[Log] Credits</div>
                 <div id="balance-value-sidebar" style="font-size: 16px; font-weight: bold;">---</div>
             `;
 

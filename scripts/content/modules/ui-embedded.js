@@ -33,7 +33,7 @@
 
       trackerDiv.innerHTML = `
         <div style="margin-bottom: 10px; font-weight: bold; color: #ffffff; font-size: 14px; border-bottom: 2px solid #7c3aed; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-          <span>Credit Tracker</span>
+          <span>Credits Tracker</span>
           <button id="genspark-tracker-settings-btn" title="Open Settings" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; opacity: 0.7; border-radius: 4px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"></circle>
