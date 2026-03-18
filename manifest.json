@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Credits Tracker for Genspark",
   "version": "1.0.0",
-  "description": "Track Genspark balance and visualize consumption pace.",
+  "description": "Track Genspark Credits and visualize consumption pace.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
