@@ -44,7 +44,7 @@
         <div id="embedded-tracker-content">Loading...</div>
       `;
 
-      const creditLeftItem = creditLeftContainer.querySelector('.credit-left-item');
+      const creditLeftItem = creditLeftContainer.querySelector('.credit-menu-row') || creditLeftContainer;
       if (creditLeftItem) {
         creditLeftItem.insertAdjacentElement('afterend', trackerDiv);
 

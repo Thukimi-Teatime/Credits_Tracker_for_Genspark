@@ -16,13 +16,13 @@
             const self = this;
             const strategies = [
                 // Strategy 1: Direct Strategy (Current UI)
-                // Targets specifically '.credit-left-item' and its value-containing child.
+                // Targets specifically '.item.credit-left' and its value-containing child.
                 () => {
-                    const container = document.querySelector('.credit-left-item');
+                    const container = document.querySelector('.item.credit-left');
                     if (!container) return null;
 
-                    // Try to get the second child (typical for current UI)
-                    const valueElement = container.children[1] || container.querySelector('span:last-child');
+                    // Try to get the credit-menu-value element first, fallback to older structure
+                    const valueElement = container.querySelector('.credit-menu-value') || container.children[1] || container.querySelector('span:last-child');
                     if (!valueElement) return null;
 
                     const text = valueElement.innerText || valueElement.textContent;
@@ -32,7 +32,7 @@
                 // Strategy 2: Container Text Strategy (UI Update Resilience)
                 // Extracts numbers from the known container regardless of internal structure.
                 () => {
-                    const container = document.querySelector('.credit-left-item');
+                    const container = document.querySelector('.item.credit-left');
                     if (!container) return null;
 
                     const allText = container.innerText || container.textContent;
@@ -121,7 +121,6 @@
          */
         checkValueStability: function () {
             const detectedValues = State.detectedValues;
-            const detectedStrategies = State.detectedStrategies;
             const detectionAttemptCount = State.detectionAttemptCount;
 
             if (detectedValues.length === 0) {
@@ -129,87 +128,32 @@
             }
 
             const lastValue = detectedValues[detectedValues.length - 1];
-            const hasNonZero = detectedValues.some(v => v > 0);
+            const lastSaved = State.lastSavedCount;
 
-            // Priority 1: Non-zero value 2 times in a row -> Immediate confirmation
-            if (lastValue > 0 && detectedValues.length >= Config.QUICK_CONFIRM_COUNT) {
-                const lastN = detectedValues.slice(-Config.QUICK_CONFIRM_COUNT);
-                const allSame = lastN.every(v => v === lastValue);
+            // "0" or "same as last saved count" is considered invalid/unchanged (loading or cached)
+            const isInvalidOrUnchanged = lastValue === 0 || (lastSaved !== null && lastValue === lastSaved);
 
-                if (allSame) {
-                    Logger.debugLog(`[Credit Tracker for Genspark] → Non-zero value (${lastValue}) detected ${Config.QUICK_CONFIRM_COUNT} times consecutively`);
+            if (isInvalidOrUnchanged) {
+                // If max attempts not reached yet, delay confirmation and continue sampling
+                if (detectionAttemptCount < Config.MAX_DETECTION_ATTEMPTS) {
+                    Logger.debugLog(`[Credit Tracker for Genspark] → Detected value (${lastValue}) is 0 or same as last saved (${lastSaved}). Continuing detection...`);
+                    return null;
+                } else {
+                    // Max attempts reached, adopt the value anyway as it might really be 0 or unchanged
+                    Logger.debugLog(`[Credit Tracker for Genspark] → Max attempts reached. Adopting value: ${lastValue}`);
                     return lastValue;
                 }
             }
 
-            // Priority 2: If non-zero value exists in array, prioritize it
-            if (hasNonZero) {
-                // Extract non-zero values only
-                const nonZeroValues = detectedValues.filter(v => v > 0);
+            // If it's a new, non-zero value, confirm immediately if it is stable (QUICK_CONFIRM_COUNT times consecutively)
+            if (detectedValues.length >= Config.QUICK_CONFIRM_COUNT) {
+                const lastN = detectedValues.slice(-Config.QUICK_CONFIRM_COUNT);
+                const allSame = lastN.every(v => v === lastValue);
 
-                Logger.debugLog(`[Credit Tracker for Genspark] → Non-zero values detected: [${nonZeroValues.join(', ')}]`);
-
-                // If non-zero value appears 2 or more times
-                if (nonZeroValues.length >= Config.QUICK_CONFIRM_COUNT) {
-                    const lastNonZero = nonZeroValues[nonZeroValues.length - 1];
-                    const lastTwoNonZero = nonZeroValues.slice(-Config.QUICK_CONFIRM_COUNT);
-
-                    if (lastTwoNonZero.length === Config.QUICK_CONFIRM_COUNT && lastTwoNonZero.every(v => v === lastNonZero)) {
-                        Logger.debugLog(`[Credit Tracker for Genspark] → Non-zero value (${lastNonZero}) confirmed ${Config.QUICK_CONFIRM_COUNT} times (ignoring previous zeros)`);
-                        return lastNonZero;
-                    }
+                if (allSame) {
+                    Logger.debugLog(`[Credit Tracker for Genspark] → New stable value (${lastValue}) detected ${Config.QUICK_CONFIRM_COUNT} times consecutively`);
+                    return lastValue;
                 }
-
-                // Max attempts reached and at least one non-zero -> adopt last non-zero
-                if (detectionAttemptCount >= Config.MAX_DETECTION_ATTEMPTS && nonZeroValues.length >= 1) {
-                    const lastNonZero = nonZeroValues[nonZeroValues.length - 1];
-                    Logger.debugLog(`[Credit Tracker for Genspark] → Max attempts reached, adopting last non-zero value: ${lastNonZero}`);
-                    return lastNonZero;
-                }
-            }
-
-            // Priority 3: Final judgment when max attempts reached
-            if (detectionAttemptCount >= Config.MAX_DETECTION_ATTEMPTS) {
-                Logger.debugLog(`[Credit Tracker for Genspark] → Max attempts reached, performing final judgment`);
-                Logger.debugLog(`[Credit Tracker for Genspark] → Detected values: [${detectedValues.join(', ')}]`);
-
-                // If non-zero never appeared
-                if (!hasNonZero) {
-                    // If zero continued for 4+ times, adopt zero
-                    if (detectedValues.length >= Config.ZERO_CONFIRM_COUNT) {
-                        const zeroCount = detectedValues.filter(v => v === 0).length;
-
-                        if (zeroCount >= Config.ZERO_CONFIRM_COUNT) {
-                            Logger.debugLog(`[Credit Tracker for Genspark] → Zero detected ${zeroCount} times (no non-zero detected)`);
-                            Logger.debugLog(`[Credit Tracker for Genspark] → Zero is considered valid, will be saved`);
-                            return 0;
-                        }
-                    }
-
-                    // Adopt most frequent value
-                    const frequencyMap = {};
-                    detectedValues.forEach(v => {
-                        frequencyMap[v] = (frequencyMap[v] || 0) + 1;
-                    });
-
-                    let maxFreq = 0;
-                    let mostFrequentValue = null;
-
-                    for (const [value, freq] of Object.entries(frequencyMap)) {
-                        if (freq > maxFreq) {
-                            maxFreq = freq;
-                            mostFrequentValue = parseInt(value);
-                        }
-                    }
-
-                    if (mostFrequentValue !== null && maxFreq >= 2) {
-                        Logger.debugLog(`[Credit Tracker for Genspark] → Most frequent value: ${mostFrequentValue} (appeared ${maxFreq} times)`);
-                        return mostFrequentValue;
-                    }
-                }
-
-                Logger.debugLog(`[Credit Tracker for Genspark] → No stable value found`);
-                return null;
             }
 
             // Not stable yet

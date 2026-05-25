@@ -81,13 +81,13 @@
 
                 // Check existence of each selector
                 selectors: {
-                    'credit-left-item': !!document.querySelector('.credit-left-item'),
+                    'credit-menu-row': !!document.querySelector('.credit-menu-row'),
                     'credit-left': !!document.querySelector('.item.credit-left'),
                     'n-popover': !!document.querySelector('.n-popover.n-popover-shared'),
                 },
 
                 // HTML of related elements (more detail)
-                creditLeftItemHTML: document.querySelector('.credit-left-item')?.outerHTML || 'NOT FOUND',
+                creditLeftItemHTML: document.querySelector('.credit-menu-row')?.outerHTML || 'NOT FOUND',
                 creditLeftHTML: document.querySelector('.item.credit-left')?.outerHTML?.substring(0, 2000) || 'NOT FOUND',
 
                 // List of class names on the page (for pattern analysis)

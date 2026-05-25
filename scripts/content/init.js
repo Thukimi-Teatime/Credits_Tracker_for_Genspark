@@ -19,6 +19,7 @@ window.GensparkTracker.State = {
     isClosing: false,
     lastCloseTime: 0,
     lastProcessedCount: null,
+    lastSavedCount: null,
     retryCount: 0,
     detectionAttemptCount: 0,
     detectedValues: [],

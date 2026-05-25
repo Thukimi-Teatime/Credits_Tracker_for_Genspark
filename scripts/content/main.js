@@ -23,7 +23,7 @@
 
         if (dropdown) {
             // TARGETED: Only proceed if this popover contains credit info
-            if (!dropdown.querySelector('.credit-left-item')) {
+            if (!dropdown.querySelector('.item.credit-left')) {
                 return;
             }
 
@@ -38,6 +38,15 @@
                 State.detectionAttemptCount = 0;
                 State.detectedValues = [];
                 State.detectedStrategies = [];
+                State.lastSavedCount = null;
+
+                // Load last saved count from storage
+                chrome.storage.local.get({ latest: null }, (data) => {
+                    if (data.latest && typeof data.latest.count === 'number') {
+                        State.lastSavedCount = data.latest.count;
+                        Logger.debugLog(`[Credit Tracker for Genspark] Last saved count loaded: ${State.lastSavedCount}`);
+                    }
+                });
 
                 // Measurement start
                 State.detectionStartTime = performance.now();
@@ -68,7 +77,7 @@
                 const waitForElementRemoval = (attemptCount = 0) => {
                     const maxAttempts = 20;
 
-                    const container = document.querySelector('.credit-left-item');
+                    const container = document.querySelector('.item.credit-left');
 
                     if (!container) {
                         // Element completely removed
@@ -129,7 +138,7 @@
             if (State.isProcessing) return;
             if (State.isClosing) return;
 
-            const container = document.querySelector('.credit-left-item');
+            const container = document.querySelector('.item.credit-left');
             const containerVisible = isVisible(container);
 
             if (container && containerVisible) {
@@ -146,6 +155,15 @@
                         State.detectionAttemptCount = 0;
                         State.detectedValues = [];
                         State.detectedStrategies = [];
+                        State.lastSavedCount = null;
+
+                        // Load last saved count from storage (fallback)
+                        chrome.storage.local.get({ latest: null }, (data) => {
+                            if (data.latest && typeof data.latest.count === 'number') {
+                                State.lastSavedCount = data.latest.count;
+                                Logger.debugLog(`[Credit Tracker for Genspark] Last saved count loaded (fallback): ${State.lastSavedCount}`);
+                            }
+                        });
 
                         // Measurement start (fallback)
                         State.detectionStartTime = performance.now();
