@@ -14,6 +14,24 @@
          */
         getCreditValue: function () {
             const self = this;
+            // IDs of elements injected by this extension — must never be read as credit values
+            const INJECTED_IDS = [
+                'genspark-embedded-tracker',
+                'genspark-tracker-dashboard',
+                'balance-display-sidebar',
+                'graph-trigger-sidebar'
+            ];
+
+            /**
+             * Returns true if the given element is inside any of the extension's own injected elements.
+             */
+            const isInsideInjectedElement = (el) => {
+                return INJECTED_IDS.some(id => {
+                    const injected = document.getElementById(id);
+                    return injected && injected.contains(el);
+                });
+            };
+
             const strategies = [
                 // Strategy 1: Direct Strategy (Current UI)
                 // Targets specifically '.item.credit-left' and its value-containing child.
@@ -21,8 +39,17 @@
                     const container = document.querySelector('.item.credit-left');
                     if (!container) return null;
 
-                    // Try to get the credit-menu-value element first, fallback to older structure
-                    const valueElement = container.querySelector('.credit-menu-value') || container.children[1] || container.querySelector('span:last-child');
+                    // Try to get the credit-menu-value element first, fallback to older structure.
+                    // IMPORTANT: Skip any element that belongs to the extension's own injected UI
+                    // to avoid reading Price-Converted display values as raw credit counts.
+                    let valueElement = container.querySelector('.credit-menu-value');
+                    if (!valueElement || isInsideInjectedElement(valueElement)) {
+                        // Fallback: walk children, skip the injected tracker div
+                        const children = Array.from(container.children).filter(
+                            child => !INJECTED_IDS.includes(child.id)
+                        );
+                        valueElement = children[1] || children[0] || null;
+                    }
                     if (!valueElement) return null;
 
                     const text = valueElement.innerText || valueElement.textContent;
@@ -31,11 +58,20 @@
 
                 // Strategy 2: Container Text Strategy (UI Update Resilience)
                 // Extracts numbers from the known container regardless of internal structure.
+                // Clones the container and strips injected elements before reading text,
+                // preventing converted Price Display values from being detected as credits.
                 () => {
                     const container = document.querySelector('.item.credit-left');
                     if (!container) return null;
 
-                    const allText = container.innerText || container.textContent;
+                    // Clone and remove injected elements so their converted values don't interfere
+                    const clone = container.cloneNode(true);
+                    INJECTED_IDS.forEach(id => {
+                        const injected = clone.querySelector('#' + id);
+                        if (injected) injected.remove();
+                    });
+
+                    const allText = clone.innerText || clone.textContent;
                     if (!allText) return null;
 
                     // Extract all numbers and pick the most likely credit candidate
@@ -49,12 +85,22 @@
 
                 // Strategy 3: Global Keyword Strategy (UI Redesign Resilience)
                 // Searches for price/credit related keywords across the entire sidebar/header.
+                // Explicitly excludes containers that are part of this extension's own UI.
+                // DISABLED: Too broad — prone to false positives from converted Price Display values
+                // and other UI elements containing credit-related keywords. Keep code for reference.
                 () => {
+                    return null; // Disabled
+
+                    /* eslint-disable no-unreachable */
                     const keywords = ['credit', 'balance', 'remain'];
                     const selector = keywords.map(kw => `[class*="${kw}"], [id*="${kw}"]`).join(', ');
                     const possibleContainers = document.querySelectorAll(selector);
 
                     for (const container of possibleContainers) {
+                        // Skip any element that is inside (or is) an injected tracker element
+                        if (isInsideInjectedElement(container)) continue;
+                        if (INJECTED_IDS.includes(container.id)) continue;
+
                         const text = container.innerText || container.textContent;
                         if (!text) continue;
 
