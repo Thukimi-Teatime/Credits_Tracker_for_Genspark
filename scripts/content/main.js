@@ -332,7 +332,8 @@
             'latest', 'history', 'renewalDay', 'planStartCredit', 'purchasedCredits',
             'numericDisplayEnabled', 'monthlyPrice', 'decimalPlaces',
             'showDailyStart', 'showCurrentBalance', 'showConsumedToday', 'showSinceLastCheck',
-            'showActualPace', 'showTargetPace', 'showDaysAhead', 'showDaysInfo', 'showStatus'
+            'showActualPace', 'showTargetPace', 'showDaysAhead', 'showDaysInfo', 'showStatus',
+            'sidebarDisplayMode'
         ];
 
         const hasRelevantChange = Object.keys(changes).some(key => relevantKeys.includes(key));
