@@ -84,11 +84,19 @@
                     'credit-menu-row': !!document.querySelector('.credit-menu-row'),
                     'credit-left': !!document.querySelector('.item.credit-left'),
                     'n-popover': !!document.querySelector('.n-popover.n-popover-shared'),
+                    // Number of ".item.credit-left" containers found (the service can render
+                    // multiple, e.g. a usage-% row and an actual balance row).
+                    'credit-left-count': document.querySelectorAll('.item.credit-left').length,
                 },
 
-                // HTML of related elements (more detail)
+                // HTML of related elements (more detail).
+                // Dump ALL ".credit-menu-row" rows (not just the first) so a multi-row
+                // layout (usage % row + balance row) can be diagnosed from the logs.
                 creditLeftItemHTML: document.querySelector('.credit-menu-row')?.outerHTML || 'NOT FOUND',
                 creditLeftHTML: document.querySelector('.item.credit-left')?.outerHTML?.substring(0, 2000) || 'NOT FOUND',
+                allCreditMenuRowsHTML: Array.from(document.querySelectorAll('.item.credit-left .credit-menu-row'))
+                    .map(el => el.outerHTML)
+                    .slice(0, 5),
 
                 // List of class names on the page (for pattern analysis)
                 allClasses: Array.from(document.querySelectorAll('[class*="credit"], [class*="balance"]'))

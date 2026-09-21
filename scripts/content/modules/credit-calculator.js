@@ -7,45 +7,97 @@
     const State = window.GensparkTracker.State;
     const Config = window.GensparkTracker.Config;
 
+    // IDs of elements injected by this extension — must never be read as credit values
+    const INJECTED_IDS = [
+        'genspark-embedded-tracker',
+        'genspark-tracker-dashboard',
+        'balance-display-sidebar',
+        'graph-trigger-sidebar'
+    ];
+
+    // Modifier class the service applies to a "usage / percentage" row
+    // (e.g. "無料枠: 残り100%"). Rows with this class are NOT the actual
+    // credit balance and must be skipped when locating the correct row.
+    const USAGE_ROW_CLASS = 'credit-menu-row-usage';
+
+    /**
+     * Returns true if the given element is inside any of the extension's own injected elements.
+     */
+    const isInsideInjectedElement = (el) => {
+        return INJECTED_IDS.some(id => {
+            const injected = document.getElementById(id);
+            return injected && injected.contains(el);
+        });
+    };
+
     const Calculator = {
+        /**
+         * Locate the ".credit-menu-row" that holds the RAW credit balance.
+         *
+         * As of the service update, the profile menu can render MULTIPLE
+         * ".item.credit-left" containers side by side — e.g. one row for
+         * "無料枠" (free-tier usage %) and one row for "クレジット" (the
+         * actual credit balance). Blindly taking the first match on the
+         * page reads the wrong (percentage) value, so this method walks
+         * every candidate row and skips anything that is not the real
+         * balance:
+         *
+         *   1. Skip rows explicitly marked as usage rows via the
+         *      "credit-menu-row-usage" modifier class.
+         *   2. Skip rows whose value text contains "%" (defensive check —
+         *      still catches percentage rows even if the class name is
+         *      renamed again in a future update).
+         *   3. Skip rows/values that belong to our own injected UI, so we
+         *      never read back our own Price-Converted display.
+         *
+         * @returns {HTMLElement|null} The correct ".credit-menu-row", or null.
+         */
+        findCreditMenuRow: function () {
+            const rows = Array.from(document.querySelectorAll('.item.credit-left .credit-menu-row'));
+
+            for (const row of rows) {
+                // Rule 1: explicit usage/percentage modifier class
+                if (row.classList.contains(USAGE_ROW_CLASS)) continue;
+
+                const valueEl = row.querySelector('.credit-menu-value');
+                if (!valueEl) continue;
+
+                // Rule 3: skip our own injected UI
+                if (isInsideInjectedElement(valueEl)) continue;
+
+                const valueText = (valueEl.innerText || valueEl.textContent || '').trim();
+
+                // Rule 2: defensive percentage check
+                if (valueText.includes('%')) continue;
+
+                return row;
+            }
+
+            return null;
+        },
+
         /**
          * Robust function to get credit value
          * Tries multiple strategies and uses the first successful one
          */
         getCreditValue: function () {
             const self = this;
-            // IDs of elements injected by this extension — must never be read as credit values
-            const INJECTED_IDS = [
-                'genspark-embedded-tracker',
-                'genspark-tracker-dashboard',
-                'balance-display-sidebar',
-                'graph-trigger-sidebar'
-            ];
-
-            /**
-             * Returns true if the given element is inside any of the extension's own injected elements.
-             */
-            const isInsideInjectedElement = (el) => {
-                return INJECTED_IDS.some(id => {
-                    const injected = document.getElementById(id);
-                    return injected && injected.contains(el);
-                });
-            };
 
             const strategies = [
                 // Strategy 1: Direct Strategy (Current UI)
-                // Targets specifically '.item.credit-left' and its value-containing child.
+                // Targets the correct '.credit-menu-row' (see findCreditMenuRow)
+                // and its value-containing child.
                 () => {
-                    const container = document.querySelector('.item.credit-left');
-                    if (!container) return null;
+                    const row = self.findCreditMenuRow();
+                    if (!row) return null;
 
                     // Try to get the credit-menu-value element first, fallback to older structure.
                     // IMPORTANT: Skip any element that belongs to the extension's own injected UI
                     // to avoid reading Price-Converted display values as raw credit counts.
-                    let valueElement = container.querySelector('.credit-menu-value');
+                    let valueElement = row.querySelector('.credit-menu-value');
                     if (!valueElement || isInsideInjectedElement(valueElement)) {
                         // Fallback: walk children, skip the injected tracker div
-                        const children = Array.from(container.children).filter(
+                        const children = Array.from(row.children).filter(
                             child => !INJECTED_IDS.includes(child.id)
                         );
                         valueElement = children[1] || children[0] || null;
@@ -57,12 +109,18 @@
                 },
 
                 // Strategy 2: Container Text Strategy (UI Update Resilience)
-                // Extracts numbers from the known container regardless of internal structure.
-                // Clones the container and strips injected elements before reading text,
-                // preventing converted Price Display values from being detected as credits.
+                // Extracts numbers from the correct container (the one that owns the
+                // matching credit-menu-row) regardless of internal structure.
+                // Clones the container and strips injected elements + percentage
+                // figures before reading text, preventing usage-% values and
+                // converted Price Display values from being detected as credits.
                 () => {
-                    const container = document.querySelector('.item.credit-left');
-                    if (!container) return null;
+                    const row = self.findCreditMenuRow();
+                    if (!row) return null;
+
+                    // Use the specific container that owns the correct row — there
+                    // can be multiple ".item.credit-left" containers on the page.
+                    const container = row.closest('.item.credit-left') || row;
 
                     // Clone and remove injected elements so their converted values don't interfere
                     const clone = container.cloneNode(true);
@@ -74,11 +132,16 @@
                     const allText = clone.innerText || clone.textContent;
                     if (!allText) return null;
 
+                    // Strip "NN%" occurrences first so a stray usage-percentage
+                    // figure inside the same container can never win as "largest number".
+                    const withoutPercent = allText.replace(/\d+(\.\d+)?\s*%/g, '');
+
                     // Extract all numbers and pick the most likely credit candidate
-                    const matches = allText.match(/\d+/g);
+                    const matches = withoutPercent.match(/\d+/g);
                     if (!matches || matches.length === 0) return null;
 
                     const numbers = matches.map(m => parseInt(m, 10)).filter(n => !isNaN(n));
+                    if (numbers.length === 0) return null;
                     // Credits are usually the primary/largest number in this small container
                     return Math.max(...numbers);
                 },
