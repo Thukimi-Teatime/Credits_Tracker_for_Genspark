@@ -178,6 +178,30 @@
                     }
                 }
 
+                // Embedded Tracker UI creation — piggyback on this same detection loop.
+                // The dropdownObserver above already attempts createEmbeddedTracker() once
+                // when the popup first becomes visible, which is enough on repeat opens
+                // (data is already cached and both the "無料枠" and "クレジット" rows render
+                // together). On a FRESH session, however, the "クレジット" row can render
+                // asynchronously slightly after the popover itself becomes visible, so that
+                // single attempt can find no matching row (findCreditMenuRow() returns null)
+                // and silently give up forever.
+                // Instead of adding a brand-new polling/timer mechanism, we re-attempt
+                // creation here on every tick of the EXISTING credit-value detection loop
+                // (same cadence, same lifecycle/close handling already in place). Both
+                // createEmbeddedTracker() and the value-detection strategies gate on the
+                // very same findCreditMenuRow() check, so the tracker becomes creatable at
+                // the exact same tick the credit value itself becomes detectable.
+                // createEmbeddedTracker() is idempotent (returns true immediately if the
+                // tracker element already exists), so this is safe to call every tick.
+                if (!document.getElementById('genspark-embedded-tracker')) {
+                    const trackerCreated = UIEchembedded.createEmbeddedTracker();
+                    if (trackerCreated) {
+                        Logger.debugLog('[Credit Tracker for Genspark] Embedded tracker created (retry via detection loop)');
+                        UIEchembedded.updateEmbeddedTracker();
+                    }
+                }
+
                 if (State.hasProcessedCurrentPopup) {
                     return;
                 }
