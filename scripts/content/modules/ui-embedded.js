@@ -8,9 +8,17 @@
   const Embedded = {
     // Create embedded tracker next to credit display
     createEmbeddedTracker: function () {
-      const creditLeftContainer = document.querySelector('.item.credit-left');
+      // The profile menu can render multiple ".item.credit-left" containers
+      // (e.g. a "無料枠" usage-% row and a "クレジット" balance row). Use the
+      // Calculator's row-detection logic so the tracker is always anchored
+      // next to the ACTUAL credit balance row, not whichever row happens to
+      // appear first in the DOM.
+      const Calculator = window.GensparkTracker.Modules.Calculator;
+      const creditMenuRow = (Calculator && typeof Calculator.findCreditMenuRow === 'function')
+        ? Calculator.findCreditMenuRow()
+        : document.querySelector('.item.credit-left .credit-menu-row'); // fallback
 
-      if (!creditLeftContainer) {
+      if (!creditMenuRow) {
         return false;
       }
 
@@ -44,9 +52,8 @@
         <div id="embedded-tracker-content">Loading...</div>
       `;
 
-      const creditLeftItem = creditLeftContainer.querySelector('.credit-menu-row') || creditLeftContainer;
-      if (creditLeftItem) {
-        creditLeftItem.insertAdjacentElement('afterend', trackerDiv);
+      if (creditMenuRow) {
+        creditMenuRow.insertAdjacentElement('afterend', trackerDiv);
 
         // Add settings button listener
         setTimeout(() => {
